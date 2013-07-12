@@ -1,0 +1,21 @@
+h1. PC Remote Control
+
+# Requires a secure TLS connection
+# All connections must authenticate using windows auth (local / domain)
+# Allows remote control of a USB camera
+# Allows execution of arbitrary commands
+# JSON protocol with terminating characters
+# Multiple simultaneous connections
+
+
+h2. License
+
+MIT
+
+
+h2. Additional Notes
+
+* Possibly this would work better as a Windows service (at the moment a user needs to be logged in) although then there are probably a host of other issues when it comes to launching apps on the desktop?
+* It could use a design overhaul, C# is not my preferred programming language it just had the lowest barrier to entry
+* It requires a copy of @makecert.exe@ either in the directory or PATH for generating TLS keys on first run
+* Depends on http://directshownet.sourceforge.net/ and http://json.codeplex.com/
