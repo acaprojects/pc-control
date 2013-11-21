@@ -79,7 +79,7 @@ namespace PodLocal
             if (server == null) // Singleton
             {
                 updateStatus += function;
-                int port = 703;
+                int port = 443;
 
 
                 string certPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);

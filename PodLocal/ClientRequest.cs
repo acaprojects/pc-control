@@ -68,7 +68,13 @@ namespace PodLocal
                     
                     return new BoolResponse(true);
                 case "app":
-                    AppLauncher.launch(command);
+                    if (args.Length >= 1)
+                    {
+                        AppLauncher.launch(command, String.Join(" ", args));
+                    }
+                    else {
+                        AppLauncher.launch(command);
+                    }
                     return new BoolResponse(true);
             }
             return new BoolResponse(false);
