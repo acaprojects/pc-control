@@ -163,8 +163,8 @@ namespace PodLocal
             else
                 updateStatus("Server", "Online: " + Server.connections.ToString() + " controller(s) connected", false);
         }
- 
-		static void OnServerConnectionAvailable(object sender, SecureConnectionResults args)
+
+        static async void OnServerConnectionAvailable(object sender, SecureConnectionResults args)
 		{
 			if (args.AsyncException != null)
 			{
@@ -212,7 +212,7 @@ namespace PodLocal
                     //
                     // Read in the data
                     //
-					responseSize = reader.Read(response, 0, 4096);
+					responseSize = await reader.ReadAsync(response, 0, 4096);
 					if (responseSize == 0)
 						break;  // Disconnect has occured
 
