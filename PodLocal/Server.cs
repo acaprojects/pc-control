@@ -94,8 +94,10 @@ namespace PodLocal
 
                     server = new SecureTcpServer(port, serverCert,
                         new SecureConnectionResultsCallback(OnServerConnectionAvailable));
-
-                    doStatusUpdate();
+                    lock (_locker)
+                    {
+                        doStatusUpdate();
+                    }
                     server.StartListening();
                 }
                 catch (System.Net.Sockets.SocketException e)
@@ -168,7 +170,10 @@ namespace PodLocal
 		{
 			if (args.AsyncException != null)
 			{
-                doStatusUpdate(args.AsyncException.Message);
+                lock (_locker)
+                {
+                    doStatusUpdate(args.AsyncException.Message);
+                }
 				return;
 			}
 
@@ -193,99 +198,111 @@ namespace PodLocal
 
                 connections++;
                 doStatusUpdate();
-
-                //
-                // Request authentication
-                //
-                writer.Write(start + JsonConvert.SerializeObject(new Command("authenticate")) + end);
             }
 
-			bool authenticated = false;
-			char[] response = new char[4096];
-			int responseSize;
+            //
+            // Request authentication
+            //
+            try
+            {
+                await writer.WriteAsync(start + JsonConvert.SerializeObject(new Command("authenticate")) + end);
+
+                bool authenticated = false;
+                char[] response = new char[4096];
+                int responseSize;
 
 
-			while (true)
-			{
-				try
-				{
-                    //
-                    // Read in the data
-                    //
-					responseSize = await reader.ReadAsync(response, 0, 4096);
-					if (responseSize == 0)
-						break;  // Disconnect has occured
+                while (true)
+                {
+                    try
+                    {
+                        //
+                        // Read in the data
+                        //
+                        responseSize = await reader.ReadAsync(response, 0, 4096);
+                        if (responseSize == 0)
+                            break;  // Disconnect has occured
 
-                    //
-                    // Extract complete responses from the stream and process them
-                    //
-                    recieved = buff.extract(new string(response, 0, responseSize));
-                    foreach (string item in recieved) {
-                        string final;
-                        object ret;
-
-                        try
+                        //
+                        // Extract complete responses from the stream and process them
+                        //
+                        recieved = buff.extract(new string(response, 0, responseSize));
+                        foreach (string item in recieved)
                         {
-                            //
-                            // Remove the start character
-                            //
-                            final = (item.Split(new char[] {start[0]}))[1];
+                            string final;
+                            object ret;
 
-                            //
-                            // Process client response
-                            //
-                            ClientRequest request = JsonConvert.DeserializeObject<ClientRequest>(final);
-                            if (authenticated) {
-                                // 
-                                // Process response
-                                //
-                                ret = request.process(myID);
-                            } else {
-                                //
-                                // Attempt to Authenticate
-                                //
-                                ret = request.authenticate(ref authenticated);
-                                if (authenticated)   // Request camera status
-                                {
-                                    MethodInvoker action = delegate {
-                                        PodLocal.self.camera.sendStatus(myID);
-                                    };
-                                    PodLocal.self.cameraStatus.BeginInvoke(action);
-                                }
-                            }
-
-                            //
-                            // Serialise writes
-                            //
-                            lock (_locker)
+                            try
                             {
-                                writer.Write(start + JsonConvert.SerializeObject(ret) + end);
+                                //
+                                // Remove the start character
+                                //
+                                final = (item.Split(new char[] { start[0] }))[1];
+
+                                //
+                                // Process client response
+                                //
+                                ClientRequest request = JsonConvert.DeserializeObject<ClientRequest>(final);
+                                if (authenticated)
+                                {
+                                    // 
+                                    // Process response
+                                    //
+                                    ret = request.process(myID);
+                                }
+                                else
+                                {
+                                    //
+                                    // Attempt to Authenticate
+                                    //
+                                    ret = request.authenticate(ref authenticated);
+                                    if (authenticated)   // Request camera status
+                                    {
+                                        MethodInvoker action = delegate
+                                        {
+                                            PodLocal.self.camera.sendStatus(myID);
+                                        };
+                                        PodLocal.self.cameraStatus.BeginInvoke(action);
+                                    }
+                                }
+
+                                await writer.WriteAsync(start + JsonConvert.SerializeObject(ret) + end);
                             }
-                        }
-                        catch {
-                            //
-                            // TODO:: Log these errors somewhere
-                            //
-                            //Console.WriteLine("Server error while processing response.");
+                            catch
+                            {
+                                //
+                                // TODO:: Log these errors somewhere
+                                //
+                                //Console.WriteLine("Server error while processing response.");
+                                break;
+                            }
                         }
                     }
-				} catch {
-					//
-					// TODO:: Log these errors somewhere
-					//
-					//Console.WriteLine("Server error!");
-				}
-			}
-
-            lock (_locker)
-            {
-                currentConnections.Remove(myID);
-                connections--;
-                doStatusUpdate();
+                    catch
+                    {
+                        //
+                        // TODO:: Log these errors somewhere
+                        //
+                        //Console.WriteLine("Server error!");
+                        break;
+                    }
+                }
             }
-			writer.Close();
-			reader.Close();
-			stream.Close();
+            catch {
+                // grab any errors occuring at init
+            }
+            finally
+            {
+                lock (_locker)
+                {
+                    currentConnections.Remove(myID);
+                    connections--;
+                    doStatusUpdate();
+                }
+                writer.Close();
+                reader.Close();
+                stream.Close();
+            }
 		}
 	}
 }
