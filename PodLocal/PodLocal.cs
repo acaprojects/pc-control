@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Diagnostics;
 
 //
 // For tray icon
@@ -16,6 +17,14 @@ namespace PodLocal
 		[STAThread]
 		public static void Main()
 		{
+            // Get Reference to the current Process
+            Process me = Process.GetCurrentProcess();
+            // Check how many total processes have the same name as the current one
+            if (Process.GetProcessesByName(me.ProcessName).Length > 1)
+            {
+                Application.Exit();
+                return;
+            }
 			Application.Run(new PodLocal());
 		}
 
@@ -32,6 +41,7 @@ namespace PodLocal
         public Label cameraStatus;
         private Label serverStatus;
 		public CamControl camera;
+        private Label label3;
 
         public static PodLocal self = null;
 
@@ -56,9 +66,9 @@ namespace PodLocal
                         MethodInvoker action = delegate { serverStatus.Text = "Server " + message; };
                         serverStatus.BeginInvoke(action);
                     }
-                    
 
-                    string popup = "";
+
+                    string popup = "Version 1.2\n";
                     foreach (KeyValuePair<string, string> status in trayStatus) {
                         popup += status.Key + " " + status.Value + "\n";
                     }
@@ -151,6 +161,7 @@ namespace PodLocal
             this.connectionList = new System.Windows.Forms.ListBox();
             this.cameraStatus = new System.Windows.Forms.Label();
             this.serverStatus = new System.Windows.Forms.Label();
+            this.label3 = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // label1
@@ -208,9 +219,19 @@ namespace PodLocal
             this.serverStatus.TabIndex = 5;
             this.serverStatus.Text = "Status:";
             // 
+            // label3
+            // 
+            this.label3.AutoSize = true;
+            this.label3.Location = new System.Drawing.Point(380, 9);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(28, 13);
+            this.label3.TabIndex = 6;
+            this.label3.Text = "v1.2";
+            // 
             // PodLocal
             // 
             this.ClientSize = new System.Drawing.Size(427, 192);
+            this.Controls.Add(this.label3);
             this.Controls.Add(this.serverStatus);
             this.Controls.Add(this.cameraStatus);
             this.Controls.Add(this.connectionList);
