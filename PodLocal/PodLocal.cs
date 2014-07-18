@@ -20,6 +20,8 @@ namespace PodLocal
             // Get Reference to the current Process
             Process me = Process.GetCurrentProcess();
             // Check how many total processes have the same name as the current one
+
+            System.Threading.Thread.Sleep(2000);
             if (Process.GetProcessesByName(me.ProcessName).Length > 1)
             {
                 Application.Exit();
@@ -68,7 +70,7 @@ namespace PodLocal
                     }
 
 
-                    string popup = "Version 1.2\n";
+                    string popup = "Version 1.3\n";
                     foreach (KeyValuePair<string, string> status in trayStatus) {
                         popup += status.Key + " " + status.Value + "\n";
                     }
@@ -125,7 +127,15 @@ namespace PodLocal
 
 		private void OnExit(object sender, EventArgs e)
 		{
+            if (Server.server != null)
+                Server.server.Dispose();
+            trayIcon.Dispose();
+            //
+            // Relaunch the application (it can never be killed!)
+            //
+            System.Diagnostics.Process.Start(System.Reflection.Assembly.GetEntryAssembly().Location);
             Application.Exit();
+            System.Environment.Exit(0);
 		}
 
         private void ShowConfig(object sender, EventArgs e)
@@ -142,11 +152,6 @@ namespace PodLocal
                 update_tray("TaskBar","User Initiated",true);
 				if (Server.server != null)
 					Server.server.Dispose();
-
-                //
-                // Relaunch the application (it can never be killed!)
-                //
-                System.Diagnostics.Process.Start(System.Reflection.Assembly.GetEntryAssembly().Location);
 			}
 
 			base.Dispose(isDisposing);
@@ -226,7 +231,8 @@ namespace PodLocal
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(28, 13);
             this.label3.TabIndex = 6;
-            this.label3.Text = "v1.2";
+            this.label3.Text = "v1.3";
+            this.label3.Click += new System.EventHandler(this.label3_Click);
             // 
             // PodLocal
             // 
@@ -260,6 +266,11 @@ namespace PodLocal
             e.Cancel = true;
             Visible = false;		// Hide form window.
             ShowInTaskbar = false;	// Remove from taskbar.
+        }
+
+        private void label3_Click(object sender, EventArgs e)
+        {
+
         }
 	}
 }

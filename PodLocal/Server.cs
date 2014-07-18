@@ -80,6 +80,8 @@ namespace PodLocal
             {
                 updateStatus += function;
                 int port = 443;
+                int attempt = 0;
+                bool success = false;
 
 
                 string certPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
@@ -87,46 +89,53 @@ namespace PodLocal
                 string localPath = System.Reflection.Assembly.GetEntryAssembly().Location;
                 localPath = Path.GetDirectoryName(localPath);
 
-                try
+                while (attempt < 3 && !success)
                 {
-                    //certPath = Path.Combine(certPath, "serverCert.cer");
-                    X509Certificate serverCert = X509Certificate.CreateFromCertFile(certPath);
-
-                    server = new SecureTcpServer(port, serverCert,
-                        new SecureConnectionResultsCallback(OnServerConnectionAvailable));
-                    lock (_locker)
+                    try
                     {
-                        doStatusUpdate();
-                    }
-                    server.StartListening();
-                }
-                catch (System.Net.Sockets.SocketException e)
-                {
-                    if (e.SocketErrorCode == SocketError.AddressAlreadyInUse) {
-                        MessageBox.Show("Application already running. Socket in use.");
-                        System.Environment.Exit(-1);
-                    }
-                }
-                catch
-                {
-                    try {
-                        System.Diagnostics.Process.Start(Path.Combine(localPath, "makecert.exe"), "-r -pe -n \"CN=MachineName_SS\" -ss my -a sha1 -sky exchange -eku 1.3.6.1.5.5.7.3.1 -sp \"Microsoft RSA SChannel Cryptographic Provider\" -sy 12 \"" + certPath + "\"");
-                    } catch {
-                        DialogResult res = MessageBox.Show("Encryption Failed. Generating TLS key file...\nRetry or cancel to exit.", "Security Notice", MessageBoxButtons.RetryCancel, MessageBoxIcon.Exclamation, MessageBoxDefaultButton.Button1);
-                        updateStatus("Server", "TLS key file not found", true);
-                        if (res == DialogResult.Retry)
+                        //certPath = Path.Combine(certPath, "serverCert.cer");
+                        X509Certificate serverCert = X509Certificate.CreateFromCertFile(certPath);
+
+                        server = new SecureTcpServer(port, serverCert,
+                            new SecureConnectionResultsCallback(OnServerConnectionAvailable));
+                        lock (_locker)
                         {
-                            Application.Exit();
-                            return;
+                            doStatusUpdate();
                         }
-                        else
+                        server.StartListening();
+                        success = true;
+                    }
+                    catch (System.Net.Sockets.SocketException e)
+                    {
+                        if (e.SocketErrorCode == SocketError.AddressAlreadyInUse)
                         {
+                            MessageBox.Show("Application already running. Socket in use.");
                             System.Environment.Exit(-1);
                             return;
                         }
                     }
-                    Thread.Sleep(4000);
-                    Application.Exit();
+                    catch
+                    {
+                        try
+                        {
+                            System.Diagnostics.Process.Start(Path.Combine(localPath, "makecert.exe"), "-r -pe -n \"CN=MachineName_SS\" -ss my -a sha1 -sky exchange -eku 1.3.6.1.5.5.7.3.1 -sp \"Microsoft RSA SChannel Cryptographic Provider\" -sy 12 \"" + certPath + "\"");
+                            Thread.Sleep(5000);
+                        }
+                        catch
+                        {
+                            DialogResult res = MessageBox.Show("Encryption Failed. Unable to generate TLS key file...", "Security Notice");
+                            System.Environment.Exit(-1);
+                            return;
+                        }
+                    }
+
+                    attempt++;
+                }
+
+                if (!success)
+                {
+                    System.Environment.Exit(-1);
+                    return;
                 }
             }
 		}
@@ -299,9 +308,18 @@ namespace PodLocal
                     connections--;
                     doStatusUpdate();
                 }
-                writer.Close();
-                reader.Close();
-                stream.Close();
+                try
+                {
+                    writer.Close();
+                } catch { }
+                try
+                {
+                    reader.Close();
+                } catch { }
+                try
+                {
+                    stream.Close();
+                } catch { }
             }
 		}
 	}
